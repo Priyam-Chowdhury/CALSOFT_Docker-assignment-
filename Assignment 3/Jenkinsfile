@@ -1,0 +1,56 @@
+pipeline {
+    agent any
+    stages {
+        stage('Build with Maven') {
+            steps {
+                script {
+                    sh "docker run -v /home/priyam/Desktop/new_env:/app -w /app maven:3.8.1-jdk-11 mvn clean package"
+                }
+            }
+        }
+ 
+        stage('Create Docker Volume') {
+            steps {
+                sh 'docker volume create my-volume1'
+            }
+        }
+ 
+        stage('Copy JAR to Docker Volume') {
+            steps {
+                sh '''
+                docker run --rm -v my-volume1:/mnt -v /home/priyam/Desktop/new_env/target:/app ubuntu:latest sh -c "cp /app/my-maven-project-1.0-SNAPSHOT.jar /mnt/my-app.jar"
+                '''
+            }
+        }
+ 
+        stage('Build Docker Image') {
+            steps {
+                sh "pwd"
+                sh 'docker build -t docker-assignmentfinal -f ~/workspace/CALSOFT-Docker_assignment_pipeline/doc_assign/dockerfile ~/workspace/CALSOFT-Docker_assignment_pipeline/doc_assign'
+            }
+        }
+ 
+        stage('Run Docker Container') {
+            steps {
+                sh 'docker run --rm -d --name docker-assignmentfinal-container3 docker-assignmentfinal'
+            }
+        }
+ 
+        stage('Create Directory and Copy JAR to New Directory') {
+            steps {
+                sh '''
+                docker run --rm -v my-volume1:/mnt -v /home/priyam/Desktop/new_env:/new-directory ubuntu:latest sh -c "cp /mnt/my-app.jar /new-directory/"
+                '''
+            }
+        }
+ 
+        stage('Copy JAR File to Another Container') {
+            steps {
+                sh '''
+                docker run --rm -d --name anotherfinal-container1 docker-assignmentfinal 
+                docker cp /home/priyam/Desktop/new_env/my-app.jar anotherfinal-container:/my-app.jar
+                '''
+            }
+        }
+    }
+}
